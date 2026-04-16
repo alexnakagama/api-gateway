@@ -10,7 +10,7 @@ import logging
 from app.services.users.users import proxy_service
 from app.services.inventory.inventory import proxy_inventory
 
-from app.config import CORS_ORIGINS
+from app.config import CORS_ORIGINS, RATE_LIMIT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -29,14 +29,14 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Users
-@limiter.limit("10/minute")
+@limiter.limit(RATE_LIMIT)
 @app.api_route("/users/{path:path}", methods=["GET","POST","PUT","DELETE"])
 async def users_proxy(path: str, request: Request):
     logging.info(f"Request to /users/{path} | Method: {request.method} | IP: {request.client.host}")
     return proxy_service("users", path, request)
 
 # Inventory
-@limiter.limit("10/minute")
+@limiter.limit(RATE_LIMIT)
 @app.api_route("/inventory/{path:path}", methods=["GET","POST","PUT","DELETE"])
 async def inventory_proxy(path: str, request: Request):
     logging.info(f"Request to /inventory/{path} | Method: {request.method} | IP: {request.client.host}")

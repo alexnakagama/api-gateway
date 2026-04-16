@@ -10,3 +10,5 @@ SERVICES = {
 }
 
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+
+RATE_LIMIT = os.getenv("RATE_LIMIT", "10/minute")
