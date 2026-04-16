@@ -1,6 +1,7 @@
-def main():
-    print("Hello from users!")
+from fastapi import FastAPI
 
+app = FastAPI()
 
-if __name__ == "__main__":
-    main()
+@app.get("/users")
+async def get_users():
+    return [{"id": 1, "name": "user example"}]
