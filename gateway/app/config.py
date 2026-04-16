@@ -1,4 +1,10 @@
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
 SERVICES = {
-    "users": "http://users:8000",
-    "inventory": "http://inventory:8000",
+    "users": os.getenv("USERS_URL"),
+    "inventory": os.getenv("INVENTORY_URL"),
 }
