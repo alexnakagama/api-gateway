@@ -10,13 +10,15 @@ import logging
 from app.services.users.users import proxy_service
 from app.services.inventory.inventory import proxy_inventory
 
+from app.config import CORS_ORIGINS
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

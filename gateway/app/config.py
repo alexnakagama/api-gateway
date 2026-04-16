@@ -8,3 +8,5 @@ SERVICES = {
     "users": os.getenv("USERS_URL"),
     "inventory": os.getenv("INVENTORY_URL"),
 }
+
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
