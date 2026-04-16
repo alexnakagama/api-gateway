@@ -1,6 +1,10 @@
-def main():
-    print("Hello from inventory!")
+from fastapi import FastAPI
 
+app = FastAPI()
 
-if __name__ == "__main__":
-    main()
+@app.get("/inventory")
+async def get_inventory():
+    return [
+        {"id": 1, "item": "product A", "stock": 10},
+        {"id:": 2, "item": "product B", "stock": 5},
+    ]
