@@ -5,6 +5,8 @@ from httpx import RequestError
 
 from app.config import SERVICES
 
+import logging
+
 async def proxy_inventory(service_name: str, path: str, request: Request):
     service_url = f"{SERVICES[service_name]}/{path}"
     try:
@@ -20,7 +22,8 @@ async def proxy_inventory(service_name: str, path: str, request: Request):
             status_code=response.status_code,
             headers=dict(response.headers)
         )
-    except RequestError:
+    except RequestError as e:
+        logging.error(f"Error contacting {service_name}: {e}")
         return Response(
             content=f"{service_name.capitalize()} service unavailable",
             status_code=502

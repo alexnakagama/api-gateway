@@ -3,6 +3,8 @@ from fastapi import Request, Response
 import httpx
 from httpx import RequestError
 
+import logging
+
 from app.config import SERVICES
 
 async def proxy_service(service_name: str, path: str, request: Request):
@@ -20,7 +22,8 @@ async def proxy_service(service_name: str, path: str, request: Request):
             status_code=response.status_code,
             headers=dict(response.headers)
         )
-    except RequestError:
+    except RequestError as e:
+        logging.error(f"Error contacting {service_name}: {e}")
         return Response(
             content=f"{service_name.capitalize()} service unavailable",
             status_code=502
