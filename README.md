@@ -1,75 +1,111 @@
 # API Gateway
 
-A microservices-based project with a centralized API Gateway built with FastAPI. The gateway handles all incoming requests and routes them to the appropriate microservice, while providing cross-cutting concerns like rate limiting, CORS, and logging.
+A production-ready API Gateway built with FastAPI that acts as a single entry point for a microservices architecture. It handles routing, rate limiting, CORS, and centralized logging across all downstream services.
+
+---
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [API Endpoints](#api-endpoints)
+- [Features](#features)
+- [Running Tests](#running-tests)
+- [Adding a New Microservice](#adding-a-new-microservice)
+
+---
 
 ## Architecture
 
 ```
-Client (browser, app, etc.)
-           │
-           ▼
-    ┌─────────────┐
-    │ API Gateway │  :8000
-    │  (FastAPI)  │
-    └──────┬──────┘
-           │
-    ┌──────┴──────┐
-    ▼             ▼
-┌────────┐  ┌───────────┐
-│ Users  │  │ Inventory │
-│ :8001  │  │  :8002    │
-└────────┘  └───────────┘
+Client (browser, mobile app, third-party)
+                  |
+                  v
+         +------------------+
+         |   API Gateway    |   localhost:8000
+         |    (FastAPI)     |
+         +--------+---------+
+                  |
+       +----------+----------+
+       |                     |
+       v                     v
+ +-----------+        +-------------+
+ |   Users   |        |  Inventory  |
+ | :8001     |        |  :8002      |
+ +-----------+        +-------------+
 ```
+
+All services communicate internally via Docker's bridge network (`microservices-net`) using their service names as hostnames.
+
+---
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
-| Language | Python 3.12 |
-| Framework | FastAPI |
-| HTTP Client | httpx |
-| Rate Limiting | slowapi |
-| Config | python-dotenv |
-| Server | Uvicorn |
+| Component        | Technology          |
+|------------------|---------------------|
+| Language         | Python 3.12         |
+| Framework        | FastAPI             |
+| HTTP Client      | httpx               |
+| Rate Limiting    | slowapi             |
+| Configuration    | python-dotenv       |
+| ASGI Server      | Uvicorn             |
+| Testing          | pytest, FastAPI TestClient |
 | Containerization | Docker + Docker Compose |
+
+---
 
 ## Project Structure
 
 ```
 api-gateway/
-├── docker-compose.yml
+├── docker-compose.yml           # Orchestrates all services
 ├── README.md
 ├── gateway/
 │   ├── Dockerfile
 │   ├── pyproject.toml
-│   ├── .env
-│   └── app/
-│       ├── main.py          # FastAPI app, routes and middleware
-│       ├── config.py        # Environment variable configuration
-│       └── services/
-│           ├── users/
-│           │   └── users.py     # Users proxy logic
-│           └── inventory/
-│               └── inventory.py # Inventory proxy logic
+│   ├── pytest.ini               # Pytest configuration
+│   ├── env_example.py           # Environment variable reference
+│   ├── README.md
+│   ├── app/
+│   │   ├── main.py              # FastAPI app: routes and middleware
+│   │   ├── config.py            # Environment variable loading
+│   │   └── services/
+│   │       ├── users/
+│   │       │   └── users.py     # HTTP proxy logic for Users service
+│   │       └── inventory/
+│   │           └── inventory.py # HTTP proxy logic for Inventory service
+│   └── tests/
+│       ├── test_health_check.py
+│       └── test_users.py
 └── services/
     ├── users/
     │   ├── Dockerfile
     │   ├── pyproject.toml
-    │   └── main.py          # Users microservice
+    │   ├── README.md
+    │   └── main.py              # Users microservice
     └── inventory/
         ├── Dockerfile
         ├── pyproject.toml
-        └── main.py          # Inventory microservice
+        ├── README.md
+        └── main.py              # Inventory microservice
 ```
+
+---
 
 ## Prerequisites
 
-- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
-- Python 3.12+ (for local development without Docker)
+- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) v2+
+- Python 3.12+ (only required for local development without Docker)
+
+---
 
 ## Getting Started
 
-### With Docker Compose (recommended)
+### Docker Compose (recommended)
 
 1. Clone the repository:
    ```bash
@@ -77,21 +113,27 @@ api-gateway/
    cd api-gateway
    ```
 
-2. Configure environment variables (optional, defaults are provided):
+2. Copy and configure the environment file:
    ```bash
-   cp gateway/.env.example gateway/.env
+   cp gateway/env_example.py gateway/.env
    ```
+   Edit `gateway/.env` with your values (see [Environment Variables](#environment-variables)).
 
 3. Build and start all services:
    ```bash
    docker compose up --build
    ```
 
-4. The gateway will be available at `http://localhost:8000`.
+4. The gateway is available at `http://localhost:8000`.
+
+To stop all services:
+```bash
+docker compose down
+```
 
 ---
 
-### Without Docker (local development)
+### Local Development (without Docker)
 
 You will need three separate terminals.
 
@@ -116,7 +158,7 @@ source .venv/bin/activate
 uvicorn app.main:app --reload
 ```
 
-Make sure your `gateway/.env` points to the correct local URLs:
+Point your `gateway/.env` to the correct local URLs:
 ```env
 USERS_URL=http://localhost:8001
 INVENTORY_URL=http://localhost:8002
@@ -124,26 +166,70 @@ CORS_ORIGINS=http://localhost:3000
 RATE_LIMIT=10/minute
 ```
 
+---
+
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `USERS_URL` | URL of the users microservice | `http://users:8000` |
-| `INVENTORY_URL` | URL of the inventory microservice | `http://inventory:8000` |
-| `CORS_ORIGINS` | Comma-separated list of allowed origins | `*` |
-| `RATE_LIMIT` | Rate limit per IP (slowapi format) | `10/minute` |
+All environment variables are configured in `gateway/.env`. The gateway reads them at startup via `python-dotenv`.
+
+| Variable          | Description                                        | Default        |
+|-------------------|----------------------------------------------------|----------------|
+| `USERS_URL`       | Base URL of the Users microservice                 | —              |
+| `INVENTORY_URL`   | Base URL of the Inventory microservice             | —              |
+| `CORS_ORIGINS`    | Comma-separated list of allowed CORS origins       | `*`            |
+| `RATE_LIMIT`      | Rate limit per IP address (slowapi format)         | `10/minute`    |
+
+**Example `.env` for Docker:**
+```env
+USERS_URL=http://users:8000
+INVENTORY_URL=http://inventory:8000
+CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
+RATE_LIMIT=20/minute
+```
+
+**Example `.env` for local development:**
+```env
+USERS_URL=http://localhost:8001
+INVENTORY_URL=http://localhost:8002
+CORS_ORIGINS=http://localhost:3000
+RATE_LIMIT=100/minute
+```
+
+---
 
 ## API Endpoints
 
-All requests go through the gateway on port `8000`.
+All requests are sent to the gateway at `http://localhost:8000`. The gateway forwards them to the appropriate microservice based on the URL prefix.
+
+### Health Check
+
+| Method | URL       | Description                  |
+|--------|-----------|------------------------------|
+| GET    | `/health` | Returns gateway health status |
+
+**Request:**
+```bash
+curl http://localhost:8000/health
+```
+
+**Response:**
+```json
+{
+  "status": "ok"
+}
+```
+
+---
 
 ### Users
 
-| Method | Gateway URL | Description |
-|--------|-------------|-------------|
-| GET | `/users/users` | Get all users |
+All requests to `/users/{path}` are proxied to the Users microservice.
 
-**Example:**
+| Method | Gateway URL     | Proxied To              | Description     |
+|--------|-----------------|-------------------------|-----------------|
+| GET    | `/users/users`  | `USERS_URL/users`       | Get all users   |
+
+**Request:**
 ```bash
 curl http://localhost:8000/users/users
 ```
@@ -159,11 +245,13 @@ curl http://localhost:8000/users/users
 
 ### Inventory
 
-| Method | Gateway URL | Description |
-|--------|-------------|-------------|
-| GET | `/inventory/inventory` | Get all inventory items |
+All requests to `/inventory/{path}` are proxied to the Inventory microservice.
 
-**Example:**
+| Method | Gateway URL             | Proxied To                    | Description          |
+|--------|-------------------------|-------------------------------|----------------------|
+| GET    | `/inventory/inventory`  | `INVENTORY_URL/inventory`     | Get all inventory    |
+
+**Request:**
 ```bash
 curl http://localhost:8000/inventory/inventory
 ```
@@ -178,40 +266,98 @@ curl http://localhost:8000/inventory/inventory
 
 ---
 
-### Interactive Docs
+### Interactive Documentation
 
-FastAPI automatically generates interactive documentation:
+FastAPI automatically generates interactive API documentation:
 
-- Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
-- ReDoc: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+| Interface   | URL                                      |
+|-------------|------------------------------------------|
+| Swagger UI  | http://localhost:8000/docs               |
+| ReDoc       | http://localhost:8000/redoc              |
+
+---
 
 ## Features
 
-- **Reverse Proxy:** Routes requests to the correct microservice based on the URL path.
-- **Rate Limiting:** Limits requests per IP using slowapi (configurable via env).
-- **CORS:** Configurable allowed origins via environment variables.
-- **Logging:** Logs every request with method, path, and client IP.
-- **Error Handling:** Returns `502 Bad Gateway` if a microservice is unreachable.
+- **Reverse Proxy** — Routes requests to the correct microservice based on the URL prefix. Forwards method, headers, and body transparently.
+- **Rate Limiting** — Limits requests per client IP using `slowapi`. Configurable via the `RATE_LIMIT` environment variable (e.g., `10/minute`, `100/hour`).
+- **CORS** — Configurable allowed origins, credentials, methods, and headers via environment variables.
+- **Centralized Logging** — Logs every incoming request with timestamp, log level, path, HTTP method, and client IP.
+- **Error Handling** — Returns `502 Bad Gateway` if a downstream microservice is unreachable, with a descriptive error message.
+- **Health Check** — Dedicated `/health` endpoint for monitoring and load balancer probes.
+
+---
+
+## Running Tests
+
+Tests are located in `gateway/tests/` and use `pytest` with FastAPI's `TestClient`.
+
+Install development dependencies (inside the gateway virtual environment):
+```bash
+cd gateway
+source .venv/bin/activate
+pip install pytest
+```
+
+Run all tests:
+```bash
+cd gateway
+pytest
+```
+
+Expected output:
+```
+collected 2 items
+
+tests/test_health_check.py .     [ 50%]
+tests/test_users.py .            [100%]
+
+2 passed in 0.5s
+```
+
+---
 
 ## Adding a New Microservice
 
-1. Create your service in `services/your-service/`.
-2. Add its URL to `gateway/.env`:
+Follow these steps to register a new service in the gateway:
+
+1. **Create the service** in `services/your-service/` with its own `Dockerfile` and `main.py`.
+
+2. **Register the URL** in `gateway/.env`:
    ```env
    YOUR_SERVICE_URL=http://your-service:8000
    ```
-3. Add it to `gateway/app/config.py`:
+
+3. **Add it to the service registry** in `gateway/app/config.py`:
    ```python
    SERVICES = {
-       ...
+       "users": os.getenv("USERS_URL"),
+       "inventory": os.getenv("INVENTORY_URL"),
        "your-service": os.getenv("YOUR_SERVICE_URL"),
    }
    ```
-4. Add a new route in `gateway/app/main.py`:
+
+4. **Add the proxy route** in `gateway/app/main.py`:
    ```python
    @limiter.limit(RATE_LIMIT)
-   @app.api_route("/your-service/{path:path}", methods=["GET","POST","PUT","DELETE"])
+   @app.api_route("/your-service/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
    async def your_service_proxy(path: str, request: Request):
+       logging.info(f"Request to /your-service/{path} | Method: {request.method} | IP: {request.client.host}")
        return await proxy_service("your-service", path, request)
    ```
-5. Add the service to `docker-compose.yml`.
+
+5. **Add the service to `docker-compose.yml`**:
+   ```yaml
+   your-service:
+     build: ./services/your-service
+     ports:
+       - "8003:8000"
+     networks:
+       - microservices-net
+   ```
+
+   And add the environment variable to the `gateway` service:
+   ```yaml
+   environment:
+     - YOUR_SERVICE_URL=http://your-service:8000
+   ```
