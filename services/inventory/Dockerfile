@@ -7,6 +7,6 @@ RUN pip install --no-cache-dir .
 
 COPY main.py .
 
-EXPOSE 8001
+EXPOSE 8002
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

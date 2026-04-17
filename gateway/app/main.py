@@ -30,14 +30,14 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Users
 @limiter.limit(RATE_LIMIT)
-@app.api_route("/users/{path:path}", methods=["GET","POST","PUT","DELETE"])
+@app.api_route("/users/{path:path}", methods=["GET"])
 async def users_proxy(path: str, request: Request):
     logging.info(f"Request to /users/{path} | Method: {request.method} | IP: {request.client.host}")
-    return proxy_service("users", path, request)
+    return await proxy_service("users", path, request)
 
 # Inventory
 @limiter.limit(RATE_LIMIT)
-@app.api_route("/inventory/{path:path}", methods=["GET","POST","PUT","DELETE"])
+@app.api_route("/inventory/{path:path}", methods=["GET"])
 async def inventory_proxy(path: str, request: Request):
     logging.info(f"Request to /inventory/{path} | Method: {request.method} | IP: {request.client.host}")
-    return proxy_inventory("inventory", path, request)
+    return await proxy_inventory("inventory", path, request)
