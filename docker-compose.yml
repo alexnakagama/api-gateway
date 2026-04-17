@@ -1,0 +1,33 @@
+services:
+  users:
+    build: ./services/users
+    ports:
+      - "8001:8000"
+    networks:
+      - microservices-net
+
+  inventory:
+    build: ./services/inventory
+    ports:
+      - "8002:8000"
+    networks:
+      - microservices-net
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - USERS_URL=http://users:8000
+      - INVENTORY_URL=http://inventory:8000
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - RATE_LIMIT=${RATE_LIMIT:-10/minute}
+    depends_on:
+      - users
+      - inventory
+    networks:
+      - microservices-net
+
+networks:
+  microservices-net:
+    driver: bridge
