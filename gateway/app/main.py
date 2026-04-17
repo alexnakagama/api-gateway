@@ -12,9 +12,13 @@ from app.services.inventory.inventory import proxy_inventory
 
 from app.config import CORS_ORIGINS, RATE_LIMIT
 
+from app.metrics import setup_metrics
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 app = FastAPI()
+
+setup_metrics(app)
 
 app.add_middleware(
     CORSMiddleware,
